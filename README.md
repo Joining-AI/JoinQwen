@@ -21,7 +21,7 @@ pip install -r requirements.txt
 在项目根目录下创建一个 `.env` 文件，并添加您的 API 密钥：
 
 ```
-API_KEY=your_api_key_here
+QWEN_API=your_api_key_here
 ```
 
 ## 使用方法
