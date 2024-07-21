@@ -23,7 +23,7 @@ class QwenEmbedder:
             print(resp)
             return None
         
-    def embed_list(self, texts, num_threads=40):
+    def embed_list(self, texts, num_threads=8):
         def process_text(text):
             embedding = self.embed_text(text)
             return text, embedding
@@ -35,6 +35,7 @@ class QwenEmbedder:
                 text = future_to_text[future]
                 try:
                     _, embedding = future.result()
+                    print('Embedding generated for text: {}'.format(text))
                     embeddings[text] = embedding
                 except Exception as exc:
                     embeddings[text] = None
