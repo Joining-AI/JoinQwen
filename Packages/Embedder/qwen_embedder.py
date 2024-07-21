@@ -60,3 +60,22 @@ class QwenEmbedder:
             result[keys[i]] = {'Similar_keys': similar_keys}
 
         return result
+    
+    def retrieve_k_most_relevant_documents(self,documents,question,k):
+        embed=QwenEmbedder()
+        document_embedding_dict = embed.embed_list(documents)
+        document_matrix = np.array(list(document_embedding_dict.values()))
+        question_vec = embed.embed_text(question)
+        
+        def cosine_similarity(vec1, vec2):
+            return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))    
+        #计算矩阵中每一行与给定向量之间的余弦相似度
+        def cosine_similarity_matrix(matrix, vec):
+            norm_matrix = np.linalg.norm(matrix, axis=1)
+            norm_vec = np.linalg.norm(vec)
+            return np.dot(matrix, vec) / (norm_matrix * norm_vec)
+        similarities = cosine_similarity_matrix(document_matrix, question_vec)
+        top_k_indices = np.argsort(similarities)[-k:][::-1]  # 获取前k个最高的相似度索引
+        top_k_documents = [documents[i] for i in top_k_indices]  # 获取前k个最高的相似度对应的文档
+        top_k_similarities = similarities[top_k_indices]  # 获取前k个最高的相似度值
+        return top_k_documents
