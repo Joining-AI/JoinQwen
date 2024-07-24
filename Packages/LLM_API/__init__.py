@@ -1,2 +1,2 @@
 from .qwen import QwenService
-from .agent import AgentOpener
+from .loader import LLMLoader

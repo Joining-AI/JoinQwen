@@ -1,4 +1,5 @@
 import dashscope
+import concurrent.futures
 from http import HTTPStatus
 import os
 import numpy as np
@@ -22,16 +23,26 @@ class QwenEmbedder:
             print(resp)
             return None
         
-    def embed_list(self, texts):
-        embeddings = {}
-        for text in texts:
+    def embed_list(self, texts, num_threads=8):
+        def process_text(text):
             embedding = self.embed_text(text)
-            if embedding:
-                embeddings[text] = embedding
-            else:
-                embeddings[text] = None
-        return embeddings
+            return text, embedding
 
+        embeddings = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+            future_to_text = {executor.submit(process_text, text): text for text in texts}
+            for future in concurrent.futures.as_completed(future_to_text):
+                text = future_to_text[future]
+                try:
+                    _, embedding = future.result()
+                    print('Embedding generated for text: {}'.format(text))
+                    embeddings[text] = embedding
+                except Exception as exc:
+                    embeddings[text] = None
+                    print(f'Text {text} generated an exception: {exc}')
+        
+        return embeddings
+    
     def partition_by_similarity(self, embeddings_dict, threshold=0.8):
         def cosine_similarity_matrix(matrix):
             norm = np.linalg.norm(matrix, axis=1)
@@ -79,3 +90,17 @@ class QwenEmbedder:
         top_k_documents = [documents[i] for i in top_k_indices]  # 获取前k个最高的相似度对应的文档
         top_k_similarities = similarities[top_k_indices]  # 获取前k个最高的相似度值
         return top_k_documents
+
+    def calculate_similarity(self, text1, text2):
+
+        embedding1 = self.embed_text(text1)
+        embedding2 = self.embed_text(text2)
+
+        if embedding1 is None or embedding2 is None:
+            return None
+
+        embedding1 = np.array(embedding1)
+        embedding2 = np.array(embedding2)
+
+        similarity = np.dot(embedding1, embedding2) / (np.linalg.norm(embedding1) * np.linalg.norm(embedding2))
+        return similarity
