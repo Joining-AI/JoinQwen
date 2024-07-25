@@ -88,6 +88,30 @@ print(vec)
 [0.11480577290058136, 3.1070446968078613, -2.426426887512207, 1.8947781324386597, -1.4686617851257324, 2.1084201335906982, 1.4298882484436035, -0.3828396201133728, -0....]
 ```
 
+# 🔧 RepoAnnotator
+
+## 快速开始
+
+> **步骤 0** - 指定项目信息并导入类
+
+```python
+root_folder = r"D:\Joining\mem0-main\mem0-main"
+new_root_folder = r'mem0'
+exclude_list=[r'D:\Joining\mem0-main\mem0-main\.github']
+from Applications.RepoAnnotator import RepoAnnotator
+```
+将 `root_folder` 替换为你的项目根目录路径，`new_root_folder` 替换为翻译后文件的目标文件夹路径，`exclude_list` 中填入你想要排除的目录或文件路径。
+<br />
+
+> **步骤 1** - 处理项目
+
+```python
+RepoAnnotator.run(root_folder, new_root_folder, exclude_list)
+```
+直接运行 `ipynb` 文件即可。
+
+<br />
+
 ## 贡献
 
 如果您有任何建议或发现了问题，请提交 Issue 或 Pull Request。
