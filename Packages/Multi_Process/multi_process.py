@@ -1,39 +1,36 @@
 import threading
-from queue import Queue
 import time
 import random
+from queue import Queue
+from tqdm import tqdm
 
 class MultiProcessor:
 
-    def __init__(self, llm, processor, data_template, prompt_template, correction_template, validator, isList=True):
+    def __init__(self, llm, parse_method, data_template, prompt_template, correction_template, validator):
         self.llm = llm
-        self.processor = processor
+        self.parse_method = parse_method
         self.data_template = data_template
         self.prompt_template = prompt_template
         self.correction_template = correction_template
         self.validator = validator
-        self.list_flag = isList
-    
+
     def generate_prompt(self, **kwargs):
         kwargs['data_template'] = self.data_template
         return self.prompt_template.format(**kwargs)
-    
+
     def generate_correction_prompt(self, answer):
         return self.correction_template.format(answer=answer, data_template=self.data_template)
-    
+
     def task_perform(self, **kwargs):
         try:
             prompt = self.generate_prompt(**kwargs)
             answer = self.llm.ask(prompt)
-            if self.list_flag:
-                structured_data = self.processor.parse_list(answer)
-            else:
-                structured_data = self.processor.parse_dict(answer)
+            structured_data = self.parse_method(answer)
             return structured_data
         except Exception as e:
             print(f"Error in task_perform: {str(e)}")
             return None
-    
+
     def correct_data(self, answer):
         correction_prompt = self.generate_correction_prompt(answer)
         correction = self.llm.ask(correction_prompt)
@@ -66,32 +63,40 @@ class MultiProcessor:
                     attempts += 1
 
         return (None, index)
-    
+
     def multitask_perform(self, tuple_list, num_threads):
         results = [None] * len(tuple_list)
         queue = Queue()
-        
+
         for idx, input_tuple in enumerate(tuple_list):
             queue.put((input_tuple, idx))
-        
-        def worker():
+
+        def worker(pbar):
             while not queue.empty():
                 input_tuple, idx = queue.get()
-                result = self.process_tuple(input_tuple)
+                result = None
+                thread = threading.Thread(target=lambda q, arg1: q.put(self.process_tuple(arg1)), args=(queue, input_tuple))
+                thread.start()
+                thread.join(timeout=100)  # 设置单线程100s超时
+                if thread.is_alive():
+                    print(f"Thread processing {input_tuple} timed out.")
+                    thread.join()
+                else:
+                    result = queue.get()
                 results[idx] = result
                 queue.task_done()
-                # 打印当前活动线程数量
-                print(f"Active threads: {threading.active_count() - 1}")  # 减去主线程
+                pbar.update(1)
 
-        threads = []
-        for _ in range(min(num_threads, len(tuple_list))):
-            thread = threading.Thread(target=worker)
-            threads.append(thread)
-            thread.start()
-        
-        queue.join()
+        with tqdm(total=len(tuple_list)) as pbar:
+            threads = []
+            for _ in range(min(num_threads, len(tuple_list))):
+                thread = threading.Thread(target=worker, args=(pbar,))
+                threads.append(thread)
+                thread.start()
 
-        for thread in threads:
-            thread.join()
+            queue.join()
+
+            for thread in threads:
+                thread.join()
 
         return results

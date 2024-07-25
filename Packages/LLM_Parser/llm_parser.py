@@ -53,7 +53,34 @@ class LLMParser:
             else:
                 raise ValueError("解析出的对象不是字典。")
         except Exception as e:
-            raise RuntimeError(f"解析失败，错误信息：{e}。原文字串为{str_with_list}")
+            raise RuntimeError(f"解析失败，错误信息：{e}。原文字串为{str_with_dict}")
+
+    def parse_pads(self, str_with_pads):
+        try:
+            # 替换中文标点为英文标点
+            str_with_pads = str_with_pads.replace("，", ",").replace("‘", "'").replace("’", "'").replace("“", "'").replace("”", "'").replace("。", ".").replace("：", ":").replace("；", ";").replace("？", "?").replace("【", "[").replace("】", "]").replace("（", "(").replace("）", ")").replace("！", "!").replace("—", "-").replace("…", "...")
+            str_with_pads = re.sub(r'(".*?")', lambda m: m.group(1).replace('\n', '\\n'), str_with_pads, flags=re.DOTALL)
+
+            # 将数据转换为小写以确保兼容大小写
+            str_with_pads_lower = str_with_pads.lower()
+
+            # 找到第一个 '=start_pad=' 和最后一个 '=end_pad=' 的位置
+            start_pad = '=start_pad='
+            end_pad = '=end_pad='
+            start_index = str_with_pads_lower.find(start_pad) + len(start_pad)
+            end_index = str_with_pads_lower.rfind(end_pad)
+
+            if start_index == -1 or end_index == -1:
+                raise ValueError(f"开始或结束标志未找到。原文字串为{str_with_pads}")
+
+            # 提取 pad 中的内容
+            content_str = str_with_pads[start_index:end_index].strip()
+
+            # 返回提取的内容
+            return content_str
+        except Exception as e:
+            raise RuntimeError(f"解析失败，错误信息：{e}。原文字串为{str_with_pads}")
+
 
     def parse_code(self,markdown_text):
         """
